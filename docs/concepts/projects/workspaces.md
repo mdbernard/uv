@@ -87,6 +87,25 @@ from a different workspace. The path is resolved relative to the project that de
 (or the workspace root for a workspace-level source) and must point to the external workspace root.
 uv selects the member that matches the dependency name.
 
+To treat every workspace member as a workspace source without listing each one, set
+[`source-members`](../../reference/settings.md#workspace_source-members) in the workspace table:
+
+```toml title="pyproject.toml"
+[project]
+name = "albatross"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["bird-feeder", "tqdm>=4,<5"]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+source-members = true
+```
+
+This is equivalent to adding `package = { workspace = true }` to `tool.uv.sources` for every member.
+Explicit `{ workspace = true }` entries remain valid. Members still cannot be sourced from Git, a
+URL, a path, or an index; exclude the package from the workspace instead.
+
 !!! note
 
     Dependencies between workspace members are editable.

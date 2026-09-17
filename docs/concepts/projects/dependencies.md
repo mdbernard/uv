@@ -472,10 +472,13 @@ bar = { path = "../projects/bar", editable = true }
 
 ### Workspace member
 
-To declare a dependency on a workspace member, add the member name with `{ workspace = true }`. All
-workspace members must be explicitly stated. Workspace members are always
-[editable](#editable-dependencies) . See the [workspace](./workspaces.md) documentation for more
-details on workspaces.
+To declare a dependency on a workspace member, add the member name with `{ workspace = true }`.
+Workspace members are always [editable](#editable-dependencies). See the
+[workspace](./workspaces.md) documentation for more details on workspaces.
+
+By default, each workspace member used as a dependency must be listed in `tool.uv.sources`. Set
+[`tool.uv.workspace.source-members`](../../reference/settings.md#workspace_source-members) to treat
+every member as a workspace source without repeating those entries.
 
 To source a dependency from a different workspace, `workspace` can also be a path string:
 

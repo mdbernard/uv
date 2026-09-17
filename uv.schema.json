@@ -2746,6 +2746,10 @@
           "items": {
             "$ref": "#/definitions/SerdePattern"
           }
+        },
+        "source-members": {
+          "description": "Treat all workspace members as workspace sources by default.\n\nWhen enabled, a dependency on a workspace member is sourced from the workspace even if it\nhas no corresponding entry in `tool.uv.sources`. Explicit `{ workspace = true }` entries\nremain valid. Other source types for members are still rejected; exclude the package from\nthe workspace instead of pointing it at Git, a URL, a path, or an index.\n\nThis is useful in large workspaces that include members with a glob, where listing every\nmember in `tool.uv.sources` would be repetitive.",
+          "type": ["boolean", "null"]
         }
       },
       "additionalProperties": false

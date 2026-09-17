@@ -13213,6 +13213,361 @@ fn lock_no_workspace_source() -> Result<()> {
     Ok(())
 }
 
+/// Lock a workspace member without an explicit source when `source-members` is enabled.
+#[cfg(feature = "test-universal")]
+#[test]
+fn lock_source_members() -> Result<()> {
+    let context = uv_test::test_context!("3.12");
+
+    let pyproject_toml = context.temp_dir.child("pyproject.toml");
+    pyproject_toml.write_str(
+        r#"
+        [project]
+        name = "project"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = ["child"]
+
+        [tool.uv.workspace]
+        members = ["child"]
+        source-members = true
+        "#,
+    )?;
+
+    let child = context.temp_dir.child("child");
+    fs_err::create_dir_all(&child)?;
+
+    let pyproject_toml = child.child("pyproject.toml");
+    pyproject_toml.write_str(
+        r#"
+        [project]
+        name = "child"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = []
+
+        [build-system]
+        requires = ["uv_build>=0.7,<10000"]
+        build-backend = "uv_build"
+        "#,
+    )?;
+
+    uv_snapshot!(context.filters(), context.lock(), @"
+    exit_code: 0 (success)
+    ----- stderr -----
+    Resolved 2 packages in [TIME]
+    ");
+
+    let lock = fs_err::read_to_string(context.temp_dir.join("uv.lock")).unwrap();
+
+    insta::with_settings!({
+        filters => context.filters(),
+    }, {
+        assert_snapshot!(
+            lock, @r#"
+        version = 1
+        revision = 3
+        requires-python = ">=3.12"
+
+        [options]
+        exclude-newer = "2024-03-25T00:00:00Z"
+
+        [manifest]
+        members = [
+            "child",
+            "project",
+        ]
+
+        [[package]]
+        name = "child"
+        version = "0.1.0"
+        source = { editable = "child" }
+
+        [[package]]
+        name = "project"
+        version = "0.1.0"
+        source = { virtual = "." }
+        dependencies = [
+            { name = "child" },
+        ]
+
+        [package.metadata]
+        requires-dist = [{ name = "child", editable = "child" }]
+        "#
+        );
+    });
+
+    Ok(())
+}
+
+/// Lock a glob workspace whose members depend on each other without explicit sources.
+#[cfg(feature = "test-universal")]
+#[test]
+fn lock_source_members_glob() -> Result<()> {
+    let context = uv_test::test_context!("3.12");
+
+    let pyproject_toml = context.temp_dir.child("pyproject.toml");
+    pyproject_toml.write_str(
+        r#"
+        [tool.uv.workspace]
+        members = ["packages/*"]
+        source-members = true
+        "#,
+    )?;
+
+    let packages = context.temp_dir.child("packages");
+
+    let tool_a = packages.child("tool-a");
+    fs_err::create_dir_all(&tool_a)?;
+    tool_a.child("pyproject.toml").write_str(
+        r#"
+        [project]
+        name = "tool-a"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = []
+
+        [build-system]
+        requires = ["uv_build>=0.7,<10000"]
+        build-backend = "uv_build"
+        "#,
+    )?;
+
+    let tool_b = packages.child("tool-b");
+    fs_err::create_dir_all(&tool_b)?;
+    tool_b.child("pyproject.toml").write_str(
+        r#"
+        [project]
+        name = "tool-b"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = ["tool-a"]
+
+        [build-system]
+        requires = ["uv_build>=0.7,<10000"]
+        build-backend = "uv_build"
+        "#,
+    )?;
+
+    let tool_c = packages.child("tool-c");
+    fs_err::create_dir_all(&tool_c)?;
+    tool_c.child("pyproject.toml").write_str(
+        r#"
+        [project]
+        name = "tool-c"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = ["tool-b"]
+
+        [build-system]
+        requires = ["uv_build>=0.7,<10000"]
+        build-backend = "uv_build"
+        "#,
+    )?;
+
+    uv_snapshot!(context.filters(), context.lock(), @"
+    exit_code: 0 (success)
+    ----- stderr -----
+    Resolved 3 packages in [TIME]
+    ");
+
+    let lock = fs_err::read_to_string(context.temp_dir.join("uv.lock")).unwrap();
+
+    insta::with_settings!({
+        filters => context.filters(),
+    }, {
+        assert_snapshot!(
+            lock, @r#"
+        version = 1
+        revision = 3
+        requires-python = ">=3.12"
+
+        [options]
+        exclude-newer = "2024-03-25T00:00:00Z"
+
+        [manifest]
+        members = [
+            "tool-a",
+            "tool-b",
+            "tool-c",
+        ]
+
+        [[package]]
+        name = "tool-a"
+        version = "0.1.0"
+        source = { editable = "packages/tool-a" }
+
+        [[package]]
+        name = "tool-b"
+        version = "0.1.0"
+        source = { editable = "packages/tool-b" }
+        dependencies = [
+            { name = "tool-a" },
+        ]
+
+        [package.metadata]
+        requires-dist = [{ name = "tool-a", editable = "packages/tool-a" }]
+
+        [[package]]
+        name = "tool-c"
+        version = "0.1.0"
+        source = { editable = "packages/tool-c" }
+        dependencies = [
+            { name = "tool-b" },
+        ]
+
+        [package.metadata]
+        requires-dist = [{ name = "tool-b", editable = "packages/tool-b" }]
+        "#
+        );
+    });
+
+    Ok(())
+}
+
+/// Explicit `{ workspace = true }` remains valid when `source-members` is enabled.
+#[cfg(feature = "test-universal")]
+#[test]
+fn lock_source_members_explicit_workspace_source() -> Result<()> {
+    let context = uv_test::test_context!("3.12");
+
+    let pyproject_toml = context.temp_dir.child("pyproject.toml");
+    pyproject_toml.write_str(
+        r#"
+        [project]
+        name = "project"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = ["child"]
+
+        [tool.uv.workspace]
+        members = ["child"]
+        source-members = true
+
+        [tool.uv.sources]
+        child = { workspace = true }
+        "#,
+    )?;
+
+    let child = context.temp_dir.child("child");
+    fs_err::create_dir_all(&child)?;
+
+    let pyproject_toml = child.child("pyproject.toml");
+    pyproject_toml.write_str(
+        r#"
+        [project]
+        name = "child"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = []
+
+        [build-system]
+        requires = ["uv_build>=0.7,<10000"]
+        build-backend = "uv_build"
+        "#,
+    )?;
+
+    uv_snapshot!(context.filters(), context.lock(), @"
+    exit_code: 0 (success)
+    ----- stderr -----
+    Resolved 2 packages in [TIME]
+    ");
+
+    let lock = fs_err::read_to_string(context.temp_dir.join("uv.lock")).unwrap();
+
+    insta::with_settings!({
+        filters => context.filters(),
+    }, {
+        assert_snapshot!(
+            lock, @r#"
+        version = 1
+        revision = 3
+        requires-python = ">=3.12"
+
+        [options]
+        exclude-newer = "2024-03-25T00:00:00Z"
+
+        [manifest]
+        members = [
+            "child",
+            "project",
+        ]
+
+        [[package]]
+        name = "child"
+        version = "0.1.0"
+        source = { editable = "child" }
+
+        [[package]]
+        name = "project"
+        version = "0.1.0"
+        source = { virtual = "." }
+        dependencies = [
+            { name = "child" },
+        ]
+
+        [package.metadata]
+        requires-dist = [{ name = "child", editable = "child" }]
+        "#
+        );
+    });
+
+    Ok(())
+}
+
+/// `source-members` does not allow a path source for a workspace member.
+#[cfg(feature = "test-universal")]
+#[test]
+fn lock_source_members_rejects_path_source() -> Result<()> {
+    let context = uv_test::test_context!("3.12");
+
+    let pyproject_toml = context.temp_dir.child("pyproject.toml");
+    pyproject_toml.write_str(
+        r#"
+        [project]
+        name = "project"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = ["child"]
+
+        [tool.uv.workspace]
+        members = ["child"]
+        source-members = true
+
+        [tool.uv.sources]
+        child = { path = "child" }
+        "#,
+    )?;
+
+    let child = context.temp_dir.child("child");
+    fs_err::create_dir_all(&child)?;
+
+    let pyproject_toml = child.child("pyproject.toml");
+    pyproject_toml.write_str(
+        r#"
+        [project]
+        name = "child"
+        version = "0.1.0"
+        requires-python = ">=3.12"
+        dependencies = []
+
+        [build-system]
+        requires = ["uv_build>=0.7,<10000"]
+        build-backend = "uv_build"
+        "#,
+    )?;
+
+    uv_snapshot!(context.filters(), context.lock(), @"
+    exit_code: 1 (failure)
+    ----- stderr -----
+    error: Failed to build `project @ file://[TEMP_DIR]/`
+      cause: Failed to parse entry: `child`
+      cause: `child` is included as a workspace member, but references a path in `tool.uv.sources`. Workspace members must be declared as workspace sources (e.g., `child = { workspace = true }`).
+    ");
+
+    Ok(())
+}
+
 /// Regression test for <https://github.com/astral-sh/uv/issues/19916>.
 ///
 /// Lock a workspace with a member that also supports standalone installation via platform-specific

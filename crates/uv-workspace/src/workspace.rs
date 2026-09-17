@@ -608,6 +608,7 @@ impl Workspace {
         pyproject_toml: &PyProjectToml,
     ) -> Result<BTreeMap<PackageName, Editability>, WorkspaceError> {
         let mut required_members = BTreeMap::new();
+        let mut sourced_packages = BTreeSet::new();
 
         for (package, sources) in sources
             .iter()
@@ -637,6 +638,7 @@ impl Workspace {
                     .flatten(),
             )
         {
+            sourced_packages.insert(package.clone());
             for source in sources.iter() {
                 let Source::Workspace {
                     workspace: WorkspaceReference::Bool(true),
@@ -657,6 +659,25 @@ impl Workspace {
                         }
                     }
                 }
+            }
+        }
+
+        // When `source-members` is enabled, members without an explicit source are treated as
+        // `{ workspace = true }` sources. Members with any other explicit source keep that
+        // override and are not inferred.
+        if source_members_enabled(pyproject_toml) {
+            for name in packages.keys() {
+                if pyproject_toml
+                    .project
+                    .as_ref()
+                    .is_some_and(|project| project.name == *name)
+                {
+                    continue;
+                }
+                if sourced_packages.contains(name) {
+                    continue;
+                }
+                required_members.entry(name.clone()).or_insert(None);
             }
         }
 
@@ -999,6 +1020,12 @@ impl Workspace {
     /// The sources table from the workspace `pyproject.toml`.
     pub fn sources(&self) -> &BTreeMap<PackageName, Sources> {
         &self.sources
+    }
+
+    /// Whether workspace members should be treated as `{ workspace = true }` sources when no
+    /// explicit `tool.uv.sources` entry is present.
+    pub fn source_members(&self) -> bool {
+        source_members_enabled(&self.pyproject_toml)
     }
 
     /// The index table from the workspace `pyproject.toml`.
@@ -1982,6 +2009,17 @@ fn has_only_gitignored_files(path: &Path) -> bool {
     true
 }
 
+/// Whether `tool.uv.workspace.source-members` is enabled for the given workspace root.
+fn source_members_enabled(pyproject_toml: &PyProjectToml) -> bool {
+    pyproject_toml
+        .tool
+        .as_ref()
+        .and_then(|tool| tool.uv.as_ref())
+        .and_then(|uv| uv.workspace.as_ref())
+        .and_then(|workspace| workspace.source_members)
+        .unwrap_or(false)
+}
+
 /// Check if we're in the `tool.uv.workspace.excluded` of a workspace.
 fn is_excluded_from_workspace(
     project_path: &Path,
@@ -2639,7 +2677,8 @@ mod tests {
                         "members": [
                           "packages/*"
                         ],
-                        "exclude": null
+                        "exclude": null,
+                        "source-members": null
                       },
                       "managed": null,
                       "package": null,
@@ -2740,7 +2779,8 @@ mod tests {
                         "members": [
                           "packages/*"
                         ],
-                        "exclude": null
+                        "exclude": null,
+                        "source-members": null
                       },
                       "managed": null,
                       "package": null,
@@ -3075,7 +3115,8 @@ mod tests {
                         ],
                         "exclude": [
                           "packages/bird-feeder"
-                        ]
+                        ],
+                        "source-members": null
                       },
                       "managed": null,
                       "package": null,
@@ -3185,7 +3226,8 @@ mod tests {
                         ],
                         "exclude": [
                           "packages/bird-feeder"
-                        ]
+                        ],
+                        "source-members": null
                       },
                       "managed": null,
                       "package": null,
@@ -3308,7 +3350,8 @@ mod tests {
                         ],
                         "exclude": [
                           "packages"
-                        ]
+                        ],
+                        "source-members": null
                       },
                       "managed": null,
                       "package": null,
@@ -3405,7 +3448,8 @@ mod tests {
                         ],
                         "exclude": [
                           "packages/*"
-                        ]
+                        ],
+                        "source-members": null
                       },
                       "managed": null,
                       "package": null,

@@ -14634,20 +14634,29 @@ fn sync_git_lfs() -> Result<()> {
     )?;
 
     uv_snapshot!(context.filters(), context.sync(), @"
-    exit_code: 0 (success)
+    exit_code: 1 (failure)
     ----- stderr -----
-    Resolved 2 packages in [TIME]
-    Prepared 1 package in [TIME]
-    Installed 1 package in [TIME]
-     + test-lfs-repo==0.1.0 (from git+https://github.com/astral-sh/test-lfs-repo.git@261c828b8e05251f3a3e4f6b47b149d691c7efbb#lfs=true)
+    error: Failed to download and build `test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo.git@261c828b8e05251f3a3e4f6b47b149d691c7efbb#lfs=true`
+      cause: Git operation failed
+      cause: process didn't exit successfully: `/usr/bin/git reset --hard 261c828b8e05251f3a3e4f6b47b149d691c7efbb` (exit status: 128)
+             --- stderr
+             git-lfs filter-process: line 1: git-lfs: command not found
+             error: could not read greeting from subprocess 'git-lfs filter-process'
+             error: initialization for subprocess 'git-lfs filter-process' failed
+             fatal: src/test_lfs_repo/lfs_module.py: smudge filter lfs failed
     ");
 
     // Verify that we can import the module and access LFS content
     uv_snapshot!(context.filters(), context.python_command()
         .arg("-c")
-        .arg("import test_lfs_repo.lfs_module"), @"
-    exit_code: 0 (success)
-    ");
+        .arg("import test_lfs_repo.lfs_module"), @r#"
+    exit_code: 1 (failure)
+    ----- stderr -----
+    Traceback (most recent call last):
+      File "<string>", line 1, in <module>
+        import test_lfs_repo.lfs_module
+    ModuleNotFoundError: No module named 'test_lfs_repo'
+    "#);
 
     let lock = context.read("uv.lock");
     insta::with_settings!({

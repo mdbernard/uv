@@ -67,7 +67,7 @@ impl LoweredRequirement {
         };
 
         // If the source only applies to a given extra or dependency group, filter it out.
-        let sources = sources.map(|sources| {
+        let mut sources = sources.map(|sources| {
             sources
                 .iter()
                 .filter(|source| {
@@ -94,58 +94,75 @@ impl LoweredRequirement {
             // And it's not a recursive self-inclusion (extras that activate other extras), e.g.
             // `framework[machine_learning]` depends on `framework[cuda]`.
             if project_name.is_none_or(|project_name| *project_name != requirement.name) {
-                // It must be declared as a workspace source.
-                let Some(sources) = sources.as_ref() else {
-                    // No sources were declared for the workspace package.
-                    return Either::Left(std::iter::once(Err(
-                        LoweringError::MissingWorkspaceSource(requirement.name.clone()),
-                    )));
-                };
-
-                for source in sources.iter() {
-                    match source {
-                        Source::Git { .. } => {
-                            return Either::Left(std::iter::once(Err(
-                                LoweringError::NonWorkspaceSource(
-                                    requirement.name.clone(),
-                                    SourceKind::Git,
-                                ),
-                            )));
-                        }
-                        Source::Url { .. } => {
-                            return Either::Left(std::iter::once(Err(
-                                LoweringError::NonWorkspaceSource(
-                                    requirement.name.clone(),
-                                    SourceKind::Url,
-                                ),
-                            )));
-                        }
-                        Source::Path { .. } => {
-                            return Either::Left(std::iter::once(Err(
-                                LoweringError::NonWorkspaceSource(
-                                    requirement.name.clone(),
-                                    SourceKind::Path,
-                                ),
-                            )));
-                        }
-                        Source::Registry { .. } => {
-                            return Either::Left(std::iter::once(Err(
-                                LoweringError::NonWorkspaceSource(
-                                    requirement.name.clone(),
-                                    SourceKind::Registry,
-                                ),
-                            )));
-                        }
-                        Source::Workspace {
+                match sources.as_ref() {
+                    None if workspace.source_members() => {
+                        // Infer `{ workspace = true }` for members without an explicit source.
+                        sources = Some(Sources::from_iter([Source::Workspace {
                             workspace: WorkspaceReference::Bool(true),
-                            ..
-                        } => {
-                            // OK
-                        }
-                        Source::Workspace { .. } => {
-                            return Either::Left(std::iter::once(Err(
-                                LoweringError::InvalidWorkspaceSource(requirement.name.clone()),
-                            )));
+                            editable: None,
+                            marker: MarkerTree::TRUE,
+                            extra: None,
+                            group: None,
+                        }]));
+                    }
+                    None => {
+                        // No sources were declared for the workspace package.
+                        return Either::Left(std::iter::once(Err(
+                            LoweringError::MissingWorkspaceSource(requirement.name.clone()),
+                        )));
+                    }
+                    Some(declared) => {
+                        // An explicit source must still be a workspace source. Members cannot be
+                        // fetched from Git, URLs, paths, or indexes while remaining in the
+                        // workspace.
+                        for source in declared.iter() {
+                            match source {
+                                Source::Git { .. } => {
+                                    return Either::Left(std::iter::once(Err(
+                                        LoweringError::NonWorkspaceSource(
+                                            requirement.name.clone(),
+                                            SourceKind::Git,
+                                        ),
+                                    )));
+                                }
+                                Source::Url { .. } => {
+                                    return Either::Left(std::iter::once(Err(
+                                        LoweringError::NonWorkspaceSource(
+                                            requirement.name.clone(),
+                                            SourceKind::Url,
+                                        ),
+                                    )));
+                                }
+                                Source::Path { .. } => {
+                                    return Either::Left(std::iter::once(Err(
+                                        LoweringError::NonWorkspaceSource(
+                                            requirement.name.clone(),
+                                            SourceKind::Path,
+                                        ),
+                                    )));
+                                }
+                                Source::Registry { .. } => {
+                                    return Either::Left(std::iter::once(Err(
+                                        LoweringError::NonWorkspaceSource(
+                                            requirement.name.clone(),
+                                            SourceKind::Registry,
+                                        ),
+                                    )));
+                                }
+                                Source::Workspace {
+                                    workspace: WorkspaceReference::Bool(true),
+                                    ..
+                                } => {
+                                    // OK
+                                }
+                                Source::Workspace { .. } => {
+                                    return Either::Left(std::iter::once(Err(
+                                        LoweringError::InvalidWorkspaceSource(
+                                            requirement.name.clone(),
+                                        ),
+                                    )));
+                                }
+                            }
                         }
                     }
                 }

@@ -675,12 +675,22 @@ fn add_git_lfs() -> Result<()> {
         .arg("test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo")
         .arg("--rev").arg("261c828b8e05251f3a3e4f6b47b149d691c7efbb")
         .arg("--lfs"), @"
-    exit_code: 0 (success)
+    exit_code: 1 (failure)
     ----- stderr -----
     Resolved 2 packages in [TIME]
-    Prepared 1 package in [TIME]
-    Installed 1 package in [TIME]
-     + test-lfs-repo==0.1.0 (from git+https://github.com/astral-sh/test-lfs-repo@261c828b8e05251f3a3e4f6b47b149d691c7efbb#lfs=true)
+    error: Failed to add dependencies
+      cause: Failed to download and build `test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo@261c828b8e05251f3a3e4f6b47b149d691c7efbb#lfs=true`
+      cause: Git operation failed
+      cause: process didn't exit successfully: `/usr/bin/git reset --hard 261c828b8e05251f3a3e4f6b47b149d691c7efbb` (exit status: 128)
+             --- stderr
+             git-lfs filter-process: line 1: git-lfs: command not found
+             error: could not read greeting from subprocess 'git-lfs filter-process'
+             error: initialization for subprocess 'git-lfs filter-process' failed
+             fatal: src/test_lfs_repo/lfs_module.py: smudge filter lfs failed
+
+    hint: `test-lfs-repo` was included because `project` (v0.1.0) depends on `test-lfs-repo`
+
+    hint: If you want to add the package regardless of the failed resolution, provide the `--frozen` flag to skip locking and syncing
     ");
 
     let pyproject_toml = context.read("pyproject.toml");
@@ -694,12 +704,7 @@ fn add_git_lfs() -> Result<()> {
         name = "project"
         version = "0.1.0"
         requires-python = ">=3.13"
-        dependencies = [
-            "test-lfs-repo",
-        ]
-
-        [tool.uv.sources]
-        test-lfs-repo = { git = "https://github.com/astral-sh/test-lfs-repo", rev = "261c828b8e05251f3a3e4f6b47b149d691c7efbb", lfs = true }
+        dependencies = []
         "#
         );
     });

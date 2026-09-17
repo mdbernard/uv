@@ -995,26 +995,32 @@ fn tool_run_git_lfs() {
     uv_snapshot!(context.filters(), context.tool_run()
         .arg("--lfs")
         .arg("git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa"), @"
-    exit_code: 0 (success)
-    ----- stdout -----
-    Hello from test-lfs-repo!
-
+    exit_code: 1 (failure)
     ----- stderr -----
-    Resolved [N] packages in [TIME]
-    Prepared [N] packages in [TIME]
-    Installed [N] packages in [TIME]
-     + test-lfs-repo==0.1.0 (from git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa#lfs=true)
+    error: Failed to resolve `--with` requirement
+      cause: Git operation failed
+      cause: process didn't exit successfully: `/usr/bin/git reset --hard e282f5be233e3f1d44934164895a043fc534b8aa` (exit status: 128)
+             --- stderr
+             git-lfs filter-process: line 1: git-lfs: command not found
+             error: could not read greeting from subprocess 'git-lfs filter-process'
+             error: initialization for subprocess 'git-lfs filter-process' failed
+             fatal: src/test_lfs_repo/another_lfs_module.py: smudge filter lfs failed
     ");
 
     uv_snapshot!(context.filters(), context.tool_run()
         .arg("--lfs")
         .arg("test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa"), @"
-    exit_code: 0 (success)
-    ----- stdout -----
-    Hello from test-lfs-repo!
-
+    exit_code: 1 (failure)
     ----- stderr -----
-    Resolved [N] packages in [TIME]
+    error: Failed to resolve tool requirement
+      cause: Failed to download and build `test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa`
+      cause: Git operation failed
+      cause: process didn't exit successfully: `/usr/bin/git reset --hard e282f5be233e3f1d44934164895a043fc534b8aa` (exit status: 128)
+             --- stderr
+             git-lfs filter-process: line 1: git-lfs: command not found
+             error: could not read greeting from subprocess 'git-lfs filter-process'
+             error: initialization for subprocess 'git-lfs filter-process' failed
+             fatal: src/test_lfs_repo/another_lfs_module.py: smudge filter lfs failed
     ");
 
     // Clear the cache.
@@ -1025,15 +1031,16 @@ fn tool_run_git_lfs() {
         .arg("git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa")
         .arg("--lfs")
         .arg("test-lfs-repo-assets"), @"
-    exit_code: 0 (success)
-    ----- stdout -----
-    Hello from test-lfs-repo! LFS_TEST=True ANOTHER_LFS_TEST=True
-
+    exit_code: 1 (failure)
     ----- stderr -----
-    Resolved [N] packages in [TIME]
-    Prepared [N] packages in [TIME]
-    Installed [N] packages in [TIME]
-     + test-lfs-repo==0.1.0 (from git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa#lfs=true)
+    error: Failed to resolve `--with` requirement
+      cause: Git operation failed
+      cause: process didn't exit successfully: `/usr/bin/git reset --hard e282f5be233e3f1d44934164895a043fc534b8aa` (exit status: 128)
+             --- stderr
+             git-lfs filter-process: line 1: git-lfs: command not found
+             error: could not read greeting from subprocess 'git-lfs filter-process'
+             error: initialization for subprocess 'git-lfs filter-process' failed
+             fatal: src/test_lfs_repo/another_lfs_module.py: smudge filter lfs failed
     ");
 
     uv_snapshot!(context.filters(), context.tool_run()
@@ -1041,12 +1048,17 @@ fn tool_run_git_lfs() {
         .arg("test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa")
         .arg("--lfs")
         .arg("test-lfs-repo-assets"), @"
-    exit_code: 0 (success)
-    ----- stdout -----
-    Hello from test-lfs-repo! LFS_TEST=True ANOTHER_LFS_TEST=True
-
+    exit_code: 1 (failure)
     ----- stderr -----
-    Resolved [N] packages in [TIME]
+    error: Failed to resolve tool requirement
+      cause: Failed to download and build `test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa`
+      cause: Git operation failed
+      cause: process didn't exit successfully: `/usr/bin/git reset --hard e282f5be233e3f1d44934164895a043fc534b8aa` (exit status: 128)
+             --- stderr
+             git-lfs filter-process: line 1: git-lfs: command not found
+             error: could not read greeting from subprocess 'git-lfs filter-process'
+             error: initialization for subprocess 'git-lfs filter-process' failed
+             fatal: src/test_lfs_repo/another_lfs_module.py: smudge filter lfs failed
     ");
 
     // Clear the cache.
@@ -1072,7 +1084,15 @@ fn tool_run_git_lfs() {
         .env(EnvVars::UV_INTERNAL__TEST_LFS_DISABLED, "1"), @"
     exit_code: [ERROR_CODE] (failure)
     ----- stderr -----
-    [PREFIX]The source distribution `[DISTRIBUTION]` is missing Git LFS artifacts
+    error: Failed to resolve tool requirement
+      cause: Failed to download and build `test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa`
+      cause: Git operation failed
+      cause: process didn't exit successfully: `/usr/bin/git reset --hard e282f5be233e3f1d44934164895a043fc534b8aa` (exit status: 128)
+             --- stderr
+             git-lfs filter-process: line 1: git-lfs: command not found
+             error: could not read greeting from subprocess 'git-lfs filter-process'
+             error: initialization for subprocess 'git-lfs filter-process' failed
+             fatal: src/test_lfs_repo/another_lfs_module.py: smudge filter lfs failed
     ");
 
     // Attempt to run when LFS artifacts are missing but LFS was not requested.
@@ -1080,24 +1100,19 @@ fn tool_run_git_lfs() {
     uv_snapshot!(context.filters(), context.tool_run()
         .arg("--from")
         .arg("test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa")
-        .arg("test-lfs-repo-assets"), @r#"
+        .arg("test-lfs-repo-assets"), @"
     exit_code: [ERROR_CODE] (failure)
     ----- stderr -----
-    Resolved [N] packages in [TIME]
-    Prepared [N] packages in [TIME]
-    Installed [N] packages in [TIME]
-     + test-lfs-repo==0.1.0 (from git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa)
-    Traceback (most recent call last):
-      File "[CACHE_DIR]/archive-v0/[HASH]/bin/test-lfs-repo-assets", line 12, in <module>
-        sys.exit(main_lfs())
-                 ~~~~~~~~^^
-      File "[CACHE_DIR]/archive-v0/[HASH]/[PYTHON-LIB]/site-packages/test_lfs_repo/__init__.py", line 5, in main_lfs
-        from .lfs_module import LFS_TEST
-      File "[CACHE_DIR]/archive-v0/[HASH]/[PYTHON-LIB]/site-packages/test_lfs_repo/lfs_module.py", line 1
-        version https://git-lfs.github.com/spec/v1
-                ^^^^^
-    SyntaxError: invalid syntax
-    "#);
+    error: Failed to resolve tool requirement
+      cause: Failed to download and build `test-lfs-repo @ git+https://github.com/astral-sh/test-lfs-repo@e282f5be233e3f1d44934164895a043fc534b8aa`
+      cause: Git operation failed
+      cause: process didn't exit successfully: `/usr/bin/git reset --hard e282f5be233e3f1d44934164895a043fc534b8aa` (exit status: 128)
+             --- stderr
+             git-lfs filter-process: line 1: git-lfs: command not found
+             error: could not read greeting from subprocess 'git-lfs filter-process'
+             error: initialization for subprocess 'git-lfs filter-process' failed
+             fatal: src/test_lfs_repo/another_lfs_module.py: smudge filter lfs failed
+    ");
 
     #[cfg(windows)]
     uv_snapshot!(context.filters(), context.tool_run()

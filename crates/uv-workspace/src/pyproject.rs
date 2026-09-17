@@ -1008,6 +1008,24 @@ pub(crate) struct ToolUvWorkspace {
         "#
     )]
     pub(crate) exclude: Option<Vec<SerdePattern>>,
+    /// Treat all workspace members as workspace sources by default.
+    ///
+    /// When enabled, a dependency on a workspace member is sourced from the workspace even if it
+    /// has no corresponding entry in `tool.uv.sources`. Explicit `{ workspace = true }` entries
+    /// remain valid. Other source types for members are still rejected; exclude the package from
+    /// the workspace instead of pointing it at Git, a URL, a path, or an index.
+    ///
+    /// This is useful in large workspaces that include members with a glob, where listing every
+    /// member in `tool.uv.sources` would be repetitive.
+    #[option(
+        default = r#"false"#,
+        value_type = "bool",
+        example = r#"
+            members = ["packages/*"]
+            source-members = true
+        "#
+    )]
+    pub(crate) source_members: Option<bool>,
 }
 
 /// (De)serialize globs as strings.

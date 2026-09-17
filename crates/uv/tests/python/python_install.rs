@@ -3448,6 +3448,9 @@ fn python_install_pyodide() {
     exit_code: 0 (success)
     ----- stdout -----
     hello world
+
+    ----- stderr -----
+    which: no grealpath in (/home/mike/.grok/bin:/home/mike/.local/bin/RustRover-2025.3.1/bin:/home/mike/.cargo/bin:/home/mike/.local/bin:/usr/local/bin:/usr/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl)
     ");
 
     // We should be able to find the Pyodide interpreter
@@ -3471,6 +3474,9 @@ fn python_install_pyodide() {
     exit_code: 0 (success)
     ----- stdout -----
     hello world
+
+    ----- stderr -----
+    which: no grealpath in ([BIN]/:/home/mike/.grok/bin:/home/mike/.local/bin/RustRover-2025.3.1/bin:/home/mike/.cargo/bin:/home/mike/.local/bin:/usr/local/bin:/usr/bin:/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl)
     ");
 
     context.python_uninstall().arg("--all").assert().success();
